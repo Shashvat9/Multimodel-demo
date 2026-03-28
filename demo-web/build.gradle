@@ -19,6 +19,7 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
     runtimeOnly 'com.mysql:mysql-connector-j:9.6.0'
+    runtimeOnly 'com.h2database:h2'
 
     providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 
