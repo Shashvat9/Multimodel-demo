@@ -1,14 +1,30 @@
 plugins {
     id 'java'
     id 'war'
+    id 'org.springframework.boot'
 }
 
 dependencies {
     // Connect the web layer to the service layer
+    implementation project(':demo-commons')
     implementation project(':demo-service')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // H2 in-memory database for development
+    runtimeOnly 'com.h2database:h2'
+
     providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
 }
 
 // Ensure the WAR task is configured for your external Tomcat
