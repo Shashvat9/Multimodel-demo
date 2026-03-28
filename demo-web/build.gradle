@@ -12,11 +12,17 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation ('org.springframework:spring-web') {
+        because 'JwtAuthenticationFilter extends OncePerRequestFilter from spring-web runtime'
+    }
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    runtimeOnly ('org.springframework:spring-web') {
+        because 'Ensure OncePerRequestFilter is available at runtime'
+    }
 
     runtimeOnly 'com.mysql:mysql-connector-j:9.6.0'
     runtimeOnly 'com.h2database:h2'
@@ -30,4 +36,9 @@ dependencies {
 // Ensure the WAR task is configured for your external Tomcat
 war {
     archiveFileName = 'demo.war'
+}
+
+// Ensure runtime classpath includes compile dependencies like spring-web for bootRun
+tasks.named('bootRun') {
+    classpath += configurations.compileClasspath
 }
