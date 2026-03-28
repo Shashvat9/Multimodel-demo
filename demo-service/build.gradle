@@ -1,0 +1,8 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(':demo-commons')
+    implementation project(':demo-repository')
+}
