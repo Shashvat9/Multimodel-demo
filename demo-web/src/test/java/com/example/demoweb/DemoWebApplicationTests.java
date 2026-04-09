@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -42,6 +43,6 @@ class DemoWebApplicationTests {
                         String.class
                 )
         );
-        assertTrue(exception.getStatusCode().is4xxClientError());
+        assertTrue(Set.of(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN).contains(exception.getStatusCode()));
     }
 }
