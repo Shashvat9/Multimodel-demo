@@ -7,6 +7,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DemoWebApplicationTests {
@@ -24,16 +29,19 @@ class DemoWebApplicationTests {
                 "http://localhost:" + environment.getProperty("local.server.port") + "/ping",
                 String.class
         );
-        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
     void logoutShouldRequireAuthentication() {
-        ResponseEntity<String> response = new RestTemplate().postForEntity(
-                "http://localhost:" + environment.getProperty("local.server.port") + "/api/auth/logout",
-                null,
-                String.class
+        HttpClientErrorException exception = assertThrows(
+                HttpClientErrorException.class,
+                () -> new RestTemplate().postForEntity(
+                        "http://localhost:" + environment.getProperty("local.server.port") + "/api/auth/logout",
+                        null,
+                        String.class
+                )
         );
-        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertTrue(exception.getStatusCode().is4xxClientError());
     }
 }

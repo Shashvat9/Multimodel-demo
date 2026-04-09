@@ -36,3 +36,8 @@ war {
 tasks.named('bootRun') {
     classpath += configurations.compileClasspath
 }
+
+tasks.named('test') {
+    useJUnitPlatform()
+    classpath += configurations.compileClasspath
+}
