@@ -8,6 +8,7 @@ import com.example.democommons.exception.InvalidRefreshTokenException;
 import com.example.demorepository.entity.RefreshToken;
 import com.example.demorepository.entity.User;
 import com.example.demorepository.repository.UserRepository;
+import com.example.demoservice.userindex.UserInMemoryIndexService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,19 +25,22 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService userDetailsService;
+    private final UserInMemoryIndexService userInMemoryIndexService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
                        AuthenticationManager authenticationManager,
-                       CustomUserDetailsService userDetailsService) {
+                       CustomUserDetailsService userDetailsService,
+                       UserInMemoryIndexService userInMemoryIndexService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
+        this.userInMemoryIndexService = userInMemoryIndexService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -49,11 +53,12 @@ public class AuthService {
 
         User user = new User(request.getUsername(), request.getEmail(),
                 passwordEncoder.encode(request.getPassword()));
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userInMemoryIndexService.indexUser(savedUser);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getUsername());
         String accessToken = jwtService.generateAccessToken(userDetails);
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser);
 
         return new AuthResponse(accessToken, refreshToken.getToken(),
                 jwtService.getAccessTokenExpirationMs());
