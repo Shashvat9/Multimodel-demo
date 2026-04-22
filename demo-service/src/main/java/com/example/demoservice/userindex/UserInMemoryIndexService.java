@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -65,6 +66,35 @@ public class UserInMemoryIndexService implements Closeable {
 
     public Optional<IndexedUser> findByUsername(String username) {
         return Optional.ofNullable(usersByUsername.get(normalize(username)));
+    }
+
+    public Optional<IndexedUser> findByUsernameOrLoad(String username, Supplier<Optional<User>> loader) {
+        String normalizedUsername = normalize(username);
+        IndexedUser fromCache = usersByUsername.get(normalizedUsername);
+        if (fromCache != null) {
+            return Optional.of(fromCache);
+        }
+
+        lock.writeLock().lock();
+        try {
+            IndexedUser cacheValueAfterLock = usersByUsername.get(normalizedUsername);
+            if (cacheValueAfterLock != null) {
+                return Optional.of(cacheValueAfterLock);
+            }
+
+            Optional<User> loadedUser = loader.get();
+            if (loadedUser.isEmpty()) {
+                return Optional.empty();
+            }
+
+            try {
+                return Optional.of(indexUserInternal(loadedUser.get()));
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to load and index user in in-memory Lucene index.", e);
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public List<IndexedUser> searchByUsernameOrEmailPrefix(String query, int limit) {
@@ -105,12 +135,7 @@ public class UserInMemoryIndexService implements Closeable {
     public void indexUser(User user) {
         lock.writeLock().lock();
         try {
-            String normalizedUsername = normalize(user.getUsername());
-            usersByUsername.put(normalizedUsername, IndexedUser.fromUser(user));
-
-            indexWriter.updateDocument(new Term("username", normalizedUsername), toDocument(user));
-            indexWriter.commit();
-            refreshReaderInternal();
+            indexUserInternal(user);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to index user in in-memory Lucene index.", e);
         } finally {
@@ -123,12 +148,23 @@ public class UserInMemoryIndexService implements Closeable {
         indexWriter.deleteAll();
 
         for (User user : userRepository.findAll()) {
-            usersByUsername.put(normalize(user.getUsername()), IndexedUser.fromUser(user));
-            indexWriter.addDocument(toDocument(user));
+            putUserAndWriteDocument(user);
         }
-
-        indexWriter.commit();
         refreshReaderInternal();
+    }
+
+    private IndexedUser indexUserInternal(User user) throws IOException {
+        IndexedUser indexedUser = putUserAndWriteDocument(user);
+        refreshReaderInternal();
+        return indexedUser;
+    }
+
+    private IndexedUser putUserAndWriteDocument(User user) throws IOException {
+        String normalizedUsername = normalize(user.getUsername());
+        IndexedUser indexedUser = IndexedUser.fromUser(user);
+        usersByUsername.put(normalizedUsername, indexedUser);
+        indexWriter.updateDocument(new Term("username", normalizedUsername), toDocument(user));
+        return indexedUser;
     }
 
     private void refreshReaderInternal() throws IOException {
